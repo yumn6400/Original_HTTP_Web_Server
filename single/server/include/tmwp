@@ -11,6 +11,9 @@ char *mimeType;
 char isClientSideTechnologyResource;
 int dataCount;
 char **data;
+string forwardTo;
+string get(string name);
+void forward(string forwardTo);
 };
 class Response
 {
