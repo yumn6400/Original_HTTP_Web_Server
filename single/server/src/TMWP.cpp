@@ -1,7 +1,9 @@
+#include<tmwp>
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
 #include<windows.h>
+using namespace tmwp;
 typedef struct _request
 {
 char *method;
@@ -72,7 +74,10 @@ return mimeType;
 }
 char isClientSideResource(char *resource)
 {
-return 'y';
+int i;
+for(i=0;resource[i]!='\0'&&resource[i]!='.';i++);
+if(resource[i]=='\0')return 'N';
+return 'Y';
 }
 REQUEST *parseRequest(char *bytes)
 {
@@ -91,7 +96,7 @@ if(resource[0]=='\0')
 {
 request->resource=NULL;
 request->MIMEType=NULL;
-request->isClientSideTechnologyResource='y';
+request->isClientSideTechnologyResource='Y';
 }
 else
 {
@@ -102,7 +107,27 @@ request->MIMEType=getMimeType(resource);
 }
 return request;
 }
-int main()
+TMWebProjector::TMWebProjector(int portNumber)
+{
+this->portNumber=portNumber;
+this->url=url;
+this->ptrOnRequest=NULL;
+}
+TMWebProjector::~TMWebProjector()
+{
+if(this->url)delete []this->url;
+}
+void TMWebProjector::onRequest(const char *url,void (*ptrOnRequest)(void))
+{
+if(this->url)delete []this->url;
+this->url=NULL;
+this->ptrOnRequest=NULL;
+if(url==NULL||ptrOnRequest==NULL)return;
+this->url=new char[strlen(url)+1];
+strcpy(this->url,url);
+this->ptrOnRequest=ptrOnRequest;
+}
+void TMWebProjector::start()
 {
 FILE *f;
 char requestBuffer[8193];
@@ -120,17 +145,17 @@ serverSocketDescriptor=socket(AF_INET,SOCK_STREAM,0);
 if(serverSocketDescriptor<0)
 {
 printf("Unable to create a socket\n");
-return 0;
+return ;
 }
 serverSocketInformation.sin_family=AF_INET;
-serverSocketInformation.sin_port=htons(5050);
+serverSocketInformation.sin_port=htons(this->portNumber);
 serverSocketInformation.sin_addr.s_addr=htonl(INADDR_ANY);
 clientSocketDescriptor=bind(serverSocketDescriptor,(struct sockaddr *)&serverSocketInformation,sizeof(serverSocketInformation));
 if(clientSocketDescriptor<0)
 {
 printf("Unable to bind to port5050\n");
 WSACleanup();
-return 0;
+return ;
 }
 listen(serverSocketDescriptor,10);
 while(1)
@@ -143,7 +168,7 @@ if(clientSocketDescriptor<0)
 printf("Unable to accept request to port5050\n");
 closesocket(serverSocketDescriptor);
 WSACleanup();
-return 0;
+return ;
 }
 byteExtracted=recv(clientSocketDescriptor,requestBuffer,sizeof(requestBuffer),0);
 if(byteExtracted<0)
@@ -159,7 +184,7 @@ else
 requestBuffer[byteExtracted]='\0';
 REQUEST *request=parseRequest(requestBuffer);
 printf("---%s\n",request->resource);
-if(request->isClientSideTechnologyResource)
+if(request->isClientSideTechnologyResource=='Y')
 {
 if(request->resource==NULL)
 {
@@ -173,7 +198,9 @@ f=fopen("index.htm","rb");
 if(f==NULL)
 {
 printf("not open any html\n");
-strcpy(responseBuffer,"HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length:167\n\n<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>Whatever</title></head><body><h1 style='color:red'>Resources /not found</h1></body></html>");
+strcpy(responseBuffer,"<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>Whatever</title></head><body><h1 style='color:red'>Resources /not found</h1></body></html>");
+len=strlen(responseBuffer);
+sprintf(responseBuffer,"HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length:%d\n\n<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>Whatever</title></head><body><h1 style='color:red'>Resources /not found</h1></body></html>",len);
 send(clientSocketDescriptor,responseBuffer,strlen(responseBuffer)+1,0);
 }
 else
@@ -196,7 +223,7 @@ i+=rc;
 fclose(f);
 closesocket(clientSocketDescriptor);
 }//else condition ends
-}//request->isClientSideTechnologyResource ends
+}//request->resource ends
 else
 {
 printf("%s\n",request->resource);
@@ -207,7 +234,7 @@ char tmp[501];
 strcpy(tmp,"<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>Whatever</title></head><body><h1 style='color:red'>Resources /not found</h1></body></html>");
 len=strlen(tmp);
 printf("%d\n",len);
-sprintf(responseBuffer,"HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length:%d\n\n<DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>Whatever</title></head><body><h1 style='color:red'>Resources /not found</h1></body></html>",len);
+sprintf(responseBuffer,"HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length:%d\n\n<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>Whatever</title></head><body><h1 style='color:red'>Resources /not found</h1></body></html>",len);
 send(clientSocketDescriptor,responseBuffer,strlen(responseBuffer)+1,0);
 }
 else
@@ -231,10 +258,48 @@ fclose(f);
 closesocket(clientSocketDescriptor);
 }//else condition ends
 }//above else condition ends
+}//request->isClientSideTechnologyResources ends
+else
+{
+if(this->url==NULL||this->ptrOnRequest==NULL)
+{
+printf("Sending 404 page\n");
+char tmp[501];
+strcpy(tmp,"<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>Whatever</title></head><body><h1 style='color:red'>Resources /not found</h1></body></html>");
+len=strlen(tmp);
+printf("%d\n",len);
+sprintf(responseBuffer,"HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length:%d\n\n<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>Whatever</title></head><body><h1 style='color:red'>Resources /%s not found</h1></body></html>",len,request->resource);
+send(clientSocketDescriptor,responseBuffer,strlen(responseBuffer)+1,0);
+}
+else
+{
+int ii=0;
+if(this->url[0]=='/')ii=1;
+if(strcmp(this->url+ii,request->resource)==0)
+{
+this->ptrOnRequest();
+printf("Sending processed page\n");
+char tmp[501];
+strcpy(tmp,"<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>Whatever</title></head><body><h1 style='color:red'>Resources /not found</h1></body></html>");
+len=strlen(tmp);
+printf("%d\n",len);
+sprintf(responseBuffer,"HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length:%d\n\n<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>Whatever</title></head><body><h1 style='color:red'>Resources /%s processed</h1></body></html>",len,request->resource);
+send(clientSocketDescriptor,responseBuffer,strlen(responseBuffer)+1,0);
+}
+else
+{
+char tmp[501];
+strcpy(tmp,"<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>Whatever</title></head><body><h1 style='color:red'>Resources /not found</h1></body></html>");
+len=strlen(tmp);
+printf("%d\n",len);
+sprintf(responseBuffer,"HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length:%d\n\n<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>Whatever</title></head><body><h1 style='color:red'>Resources /%s not found</h1></body></html>",len,request->resource);
+send(clientSocketDescriptor,responseBuffer,strlen(responseBuffer)+1,0);
 }
 }
+}
+}//else condition ends
 }
 closesocket(serverSocketDescriptor);
 WSACleanup();
-return 0;
+return ;
 }
