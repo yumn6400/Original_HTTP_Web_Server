@@ -6,10 +6,25 @@
 #include<windows.h>
 using namespace std;
 using namespace tmwp;
-//changes
 string Request::get(string name)
 {
-return string("2");
+string val;
+int e,i;
+for(i=0;i<this->dataCount;i++)
+{
+for(e=0;data[i][e]!='\0'&&data[i][e]!='=';e++);
+if(data[i][e]!='=')continue;
+if(strncmp(data[i],name.c_str(),e)==0)break;
+}
+if(i==this->dataCount)
+{
+val="";
+}
+else
+{
+val=string(data[i]+(e+1));
+}
+return val;
 }
 void Request::forward(string forwardTo)
 {
@@ -285,7 +300,6 @@ sprintf(header,"HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length:%d\n\n",
 send(clientSocketDescriptor,header,strlen(header)+1,0);
 strcpy(responseBuffer,"<!DOCTYPE html><html lang='en'><head><title>Whatever</title></head><body><h1>Resource /not found</h1></body></html>");
 send(clientSocketDescriptor,responseBuffer,strlen(responseBuffer)+1,0);
-//changes
 closesocket(clientSocketDescriptor);
 break; //introduced because of forwarding features
 }
@@ -307,7 +321,6 @@ i=i+rc;
 }
 fclose(f);
 closesocket(clientSocketDescriptor);
-//changes
 break; //introduced because of forwarding features
 }
 }
@@ -322,8 +335,7 @@ len=strlen(tmp);
 sprintf(header,"HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length:%d\n\n",len);
 send(clientSocketDescriptor,header,strlen(header)+1,0);
 sprintf(responseBuffer,"<!DOCTYPE html><html lang='en'><head><title>Whatever</title></head><body><h1>Resource /%s not found</h1></body></html>",request->resource);
-send(clientSocketDescriptor,responseBuffer,strlen(responseBuffer)+1,0);
-//changes
+send(clientSocketDescriptor,responseBuffer,strlen(responseBuffer)+1,0); 
 closesocket(clientSocketDescriptor);
 break; //introduced because of forwarding features
 }
@@ -331,7 +343,7 @@ else
 {
 fseek(f,0,2);
 len=ftell(f);
-fseek(f,0,0);
+fseek(f,0,0); 
 sprintf(header,"HTTP/1.1 200 OK\nContent-Type:%s\nContent-Length:%d\nConnection:close\n\n",request->mimeType,len);
 send(clientSocketDescriptor,header,strlen(header),0);
 i=0;
@@ -345,7 +357,7 @@ i=i+rc;
 }
 fclose(f);
 closesocket(clientSocketDescriptor);
-//changes
+ 
 break; //introduced because of forwarding features
 }
 }
