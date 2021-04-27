@@ -6,6 +6,7 @@
 #include<windows.h>
 using namespace std;
 using namespace tmwp;
+//changes
 string Request::get(string name)
 {
 string val;
@@ -175,22 +176,17 @@ return request;
 TMWebProjector::TMWebProjector(int portNumber)
 {
 this->portNumber=portNumber;
-this->url=NULL;
-this->ptrOnRequest=NULL;
+//this->url=NULL;
+//this->ptrOnRequest=NULL;
 }
 TMWebProjector::~TMWebProjector()
 {
-if(this->url)delete []this->url;
+//if(this->url)delete []this->url;
 }
-void TMWebProjector::onRequest(const char *url,void (*ptrOnRequest)(Request &request,Response &response))
+void TMWebProjector::onRequest(string url,void (*ptrOnRequest)(Request &request,Response &response))
 {
-if(this->url)delete []this->url;
-this->url=NULL;
-this->ptrOnRequest=NULL;
-if(url==NULL||ptrOnRequest==NULL)return;
-this->url=(char *)malloc(sizeof(char)*strlen(url));
-strcpy(this->url,url);
-this->ptrOnRequest=ptrOnRequest;
+if(url.length()==0||ptrOnRequest==NULL)return;
+requestMappings.insert(pair<string,void(*)(Request &,Response &)>(url,ptrOnRequest));
 }
 
 Response::Response(int clientSocketDescriptor)
@@ -300,6 +296,7 @@ sprintf(header,"HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length:%d\n\n",
 send(clientSocketDescriptor,header,strlen(header)+1,0);
 strcpy(responseBuffer,"<!DOCTYPE html><html lang='en'><head><title>Whatever</title></head><body><h1>Resource /not found</h1></body></html>");
 send(clientSocketDescriptor,responseBuffer,strlen(responseBuffer)+1,0);
+//changes
 closesocket(clientSocketDescriptor);
 break; //introduced because of forwarding features
 }
@@ -321,6 +318,7 @@ i=i+rc;
 }
 fclose(f);
 closesocket(clientSocketDescriptor);
+//changes
 break; //introduced because of forwarding features
 }
 }
@@ -335,7 +333,8 @@ len=strlen(tmp);
 sprintf(header,"HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length:%d\n\n",len);
 send(clientSocketDescriptor,header,strlen(header)+1,0);
 sprintf(responseBuffer,"<!DOCTYPE html><html lang='en'><head><title>Whatever</title></head><body><h1>Resource /%s not found</h1></body></html>",request->resource);
-send(clientSocketDescriptor,responseBuffer,strlen(responseBuffer)+1,0); 
+send(clientSocketDescriptor,responseBuffer,strlen(responseBuffer)+1,0);
+//changes
 closesocket(clientSocketDescriptor);
 break; //introduced because of forwarding features
 }
@@ -343,7 +342,7 @@ else
 {
 fseek(f,0,2);
 len=ftell(f);
-fseek(f,0,0); 
+fseek(f,0,0);
 sprintf(header,"HTTP/1.1 200 OK\nContent-Type:%s\nContent-Length:%d\nConnection:close\n\n",request->mimeType,len);
 send(clientSocketDescriptor,header,strlen(header),0);
 i=0;
@@ -357,14 +356,16 @@ i=i+rc;
 }
 fclose(f);
 closesocket(clientSocketDescriptor);
- 
+//changes
 break; //introduced because of forwarding features
 }
 }
 }
 else
 {
-if(this->url==NULL||this->ptrOnRequest==NULL)
+map<string,void(*)(Request &,Response &)>::iterator iter;
+iter=requestMappings.find(string("/")+string(request->resource));
+if(iter==requestMappings.end())
 {
 char tmp[501];
 sprintf(tmp,"<!DOCTYPE html><html lang='en'><head><title>Whatever</title></head><body><h1>Resource /%s not found</h1></body></html>",request->resource);
@@ -378,12 +379,8 @@ break; //introduced because of forwarding features
 }
 else
 {
-int ii=0;
-if(this->url[0]=='/')ii=1;
-if(strcmp(this->url+ii,request->resource)==0)
-{
 Response response(clientSocketDescriptor);
-this->ptrOnRequest(*request,response);
+iter->second(*request,response);
 //changes
 if(request->forwardTo.length()>0)
 {
@@ -395,35 +392,15 @@ request->isClientSideTechnologyResource=isClientSideResource(request->resource);
 request->mimeType=isMimeType(request->resource);
 continue;
 }
-
-//changes
 if(request->data!=NULL)
 {
 for(int k=0;k<request->dataCount;k++)free(request->data[k]);
 free(request->data);
 }
-//changes
-break;  //introduced because of forwarding features
+break;
 }
-else
-{
-char tmp[501];
-sprintf(tmp,"<!DOCTYPE html><html lang='en'><head><title>Whatever</title></head><body><h1>Resource /%s not found</h1></body></html>",request->resource);
-len=strlen(tmp);
-sprintf(header,"HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length:%d\n\n",len);
-send(clientSocketDescriptor,header,strlen(header)+1,0);
-sprintf(responseBuffer,"<!DOCTYPE html><html lang='en'><head><title>Whatever</title></head><body><h1>Resource /%s not found</h1></body></html>",request->resource);
-send(clientSocketDescriptor,responseBuffer,strlen(responseBuffer)+1,0);
-closesocket(clientSocketDescriptor);
-break; //changes
-}
-}
-
-//changes
 }//the infinite loop introduced because of forwarding features ends here
 }
-
-
 }
 closesocket(serverSocketDescriptor);
 WSACleanup();

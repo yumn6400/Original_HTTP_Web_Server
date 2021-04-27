@@ -1,4 +1,5 @@
 #include<iostream>
+#include<map>
 using namespace std;
 namespace tmwp
 {
@@ -31,12 +32,13 @@ class TMWebProjector
 {
 private:
 int portNumber;
-char *url;
-void (*ptrOnRequest)(Request &,Response &);
+//char *url;
+//void (*ptrOnRequest)(Request &,Response &);
+map<string,void(*)(Request &,Response &)>requestMappings;
 public:
 TMWebProjector(int portNumber);
 ~TMWebProjector();
-void onRequest(const char *url,void (*ptrOnRequest)(Request &,Response &));
+void onRequest(string url,void (*ptrOnRequest)(Request &,Response &));
 void start();
 };
 }
