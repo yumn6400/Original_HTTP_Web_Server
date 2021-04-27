@@ -1,17 +1,10 @@
+#include<iostream>
 #include<stdio.h>
 #include<tmwp>
 #include<string.h>
 #include<windows.h>
+using namespace std;
 using namespace tmwp;
-typedef struct _request
-{
-char *method;
-char *resource;
-char *mimeType;
-char isClientSideTechnologyResource;
-int dataCount;
-char **data;
-}REQUEST;
 int extensionEquals(const char *left,const char *right)
 {
 char a,b; 
@@ -72,7 +65,7 @@ for(i=0;resource[i]!='\0'&&resource[i]!='.';i++);
 if(resource[i]=='\0')return 'N';
 return 'Y';
 }
-REQUEST *parseRequest(char *bytes)
+Request *parseRequest(char *bytes)
 {
 char method[11];
 char resource[1001];
@@ -131,7 +124,7 @@ j++;
 }
 }
 printf("Request arrived for %s\n",resource);
-REQUEST *request=(REQUEST *)malloc(sizeof(REQUEST));
+Request *request=(Request *)malloc(sizeof(Request));
 request->dataCount=dataCount;
 request->data=data;
 request->method=(char *)malloc((sizeof(char)*strlen(method))+1);
@@ -161,7 +154,7 @@ TMWebProjector::~TMWebProjector()
 {
 if(this->url)delete []this->url;
 }
-void TMWebProjector::onRequest(const char *url,void (*ptrOnRequest)(int,char *[]))
+void TMWebProjector::onRequest(const char *url,void (*ptrOnRequest)(Request &request,Response &response))
 {
 if(this->url)delete []this->url;
 this->url=NULL;
@@ -171,6 +164,38 @@ this->url=(char *)malloc(sizeof(char)*strlen(url));
 strcpy(this->url,url);
 this->ptrOnRequest=ptrOnRequest;
 }
+
+Response::Response(int clientSocketDescriptor)
+{
+this->clientSocketDescriptor=clientSocketDescriptor;
+this->isClosed=false;
+this->headerCreated=false;
+}
+void Response::createHeader()
+{
+char header[501];
+sprintf(header,"HTTP/1.1 200 OK\nContent-Type:text/html\n\n");
+send(clientSocketDescriptor,header,strlen(header),0);
+this->headerCreated=true;
+}
+void Response::write(const char *str)
+{
+if(str==NULL)return;
+int len=strlen(str);
+if(len==0)return;
+if(!(this->headerCreated))createHeader();
+send(clientSocketDescriptor,str,len,0);
+}
+void Response::close()
+{
+if(this->isClosed)return;
+closesocket(this->clientSocketDescriptor);
+this->isClosed=true;
+}
+
+
+
+
 void TMWebProjector::start()
 {
 FILE *f;
@@ -220,8 +245,7 @@ return ;
 }
 success=recv(clientSocketDescriptor,requestBuffer,sizeof(requestBuffer),0);
 printf("request arrived\n");
-REQUEST *request=parseRequest(requestBuffer);
-printf("Method:%s,Resource:%s,MimeType:%s,ClientSideResource:%c\n",request->method,request->resource,request->mimeType,request->isClientSideTechnologyResource);
+Request *request=parseRequest(requestBuffer);
 if(request->isClientSideTechnologyResource=='Y')
 {
 if(request->resource==NULL)
@@ -314,19 +338,13 @@ int ii=0;
 if(this->url[0]=='/')ii=1;
 if(strcmp(this->url+ii,request->resource)==0)
 {
-this->ptrOnRequest(request->dataCount,request->data);
+Response response(clientSocketDescriptor);
+this->ptrOnRequest(*request,response);
 if(request->data!=NULL)
 {
 for(int k=0;k<request->dataCount;k++)free(request->data[k]);
 free(request->data);
 }
-char tmp[501];
-sprintf(tmp,"<!DOCTYPE html><html lang='en'><head><title>Whatever</title></head><body><h1>Resource /%s not found</h1></body></html>",request->resource);
-len=strlen(tmp);
-sprintf(header,"HTTP/1.1 200 OK\nContent-Type:text/html\nContent-Length:%d\n\n",len);
-send(clientSocketDescriptor,header,strlen(header)+1,0);
-sprintf(responseBuffer,"<!DOCTYPE html><html lang='en'><head><title>Whatever</title></head><body><h1>Resource /%s become processed</h1></body></html>",request->resource);
-send(clientSocketDescriptor,responseBuffer,strlen(responseBuffer)+1,0);
 }
 else
 {

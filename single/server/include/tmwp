@@ -1,15 +1,39 @@
+#include<iostream>
+using namespace std;
 namespace tmwp
 {
+class Request
+{
+public:
+char *method;
+char *resource;
+char *mimeType;
+char isClientSideTechnologyResource;
+int dataCount;
+char **data;
+};
+class Response
+{
+private:
+int clientSocketDescriptor;
+bool isClosed;
+bool headerCreated;
+void createHeader();
+public:
+Response(int clientSocketDescriptor);
+void write(const char *str);
+void close();
+};
 class TMWebProjector
 {
 private:
 int portNumber;
 char *url;
-void (*ptrOnRequest)(int,char *[]);
+void (*ptrOnRequest)(Request &,Response &);
 public:
 TMWebProjector(int portNumber);
 ~TMWebProjector();
-void onRequest(const char *url,void (*ptrOnRequest)(int,char *[]));
+void onRequest(const char *url,void (*ptrOnRequest)(Request &,Response &));
 void start();
 };
 }
