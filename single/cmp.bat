@@ -1,1 +1,0 @@
-gcc server1.c -o server1.exe -lws2_32
