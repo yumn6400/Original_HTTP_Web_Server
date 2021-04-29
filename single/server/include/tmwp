@@ -14,6 +14,9 @@ int dataCount;
 char **data;
 string forwardTo;
 string get(string name);
+map<string,string>keyValues;
+void setKeyValue(string k,string v);
+string getValue(string k);
 void forward(string forwardTo);
 };
 class Response
@@ -26,6 +29,7 @@ void createHeader();
 public:
 Response(int clientSocketDescriptor);
 void write(const char *str);
+void write(string str);
 void close();
 };
 class TMWebProjector

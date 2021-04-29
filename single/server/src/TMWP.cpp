@@ -7,6 +7,17 @@
 using namespace std;
 using namespace tmwp;
 //changes
+void Request::setKeyValue(string k,string v)
+{
+keyValues.insert(pair<string,string>(k,v));
+}
+string Request::getValue(string k)
+{
+map<string,string>::iterator iter;
+iter=keyValues.find(k);
+if(iter==keyValues.end())return string("");
+return iter->second;
+}
 string Request::get(string name)
 {
 string val;
@@ -209,6 +220,10 @@ int len=strlen(str);
 if(len==0)return;
 if(!(this->headerCreated))createHeader();
 send(clientSocketDescriptor,str,len,0);
+}
+void Response::write(string str)
+{
+write(str.c_str());
 }
 void Response::close()
 {
