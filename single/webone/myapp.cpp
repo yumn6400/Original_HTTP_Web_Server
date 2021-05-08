@@ -21,6 +21,7 @@ response.write(request.getValue("error"));
 response.write("</h1>");
 response.write("</body>");
 response.write("</html>");
+response.close();
 request.forward("index.html");
 }
 void getCityView(Request &request,Response &response)
